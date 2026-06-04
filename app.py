@@ -9,7 +9,7 @@ genai.configure(api_key="AQ.Ab8RN6IzREH7_Hvv6XemVIAq6tzM_h6AhPXy22982mJRxzjfVQ")
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
 
-# Custom CSS Injection for Faded Background Image and Mobile App Shortcut Icon
+# Custom CSS Injection for Mobile App Shortcut Icon and Camera Fixes (Background Image Removed)
 st.markdown(
     """
     <head>
@@ -17,15 +17,6 @@ st.markdown(
         <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/8124/8124017.png">
     </head>
     <style>
-    /* Injects a beautifully faded background image across the whole page */
-    .stApp {
-        background-image: linear-gradient(rgba(255,255,255,0.88), rgba(255,255,255,0.88)), 
-                          url("https://img.freepik.com/free-vector/healthy-food-background_23-2148524416.jpg");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
-    
     /* Corrects camera aspect ratio bugs on mobile screens */
     div[data-testid="stMarkdownContainer"] video {
         object-fit: contain !important;
@@ -43,7 +34,7 @@ st.title("📸 AI Food Scale & Calorie Counter")
 st.write("Analyze your meal instantly using your live camera or an image upload.")
 st.write("---")
 
-# ADDED: Dietary Goal Dropdown Selection Menu
+# Dietary Goal Dropdown Selection Menu
 st.subheader("🎯 Set Your Current Nutritional Goal")
 diet_goal = st.selectbox(
     "Choose a filter to customize the AI analysis:",
@@ -117,7 +108,7 @@ if final_image is not None:
                     "4. Give a final total calorie calculation.\n"
                 )
                 
-                # ADDED: Dynamic prompt customization logic based on selected user goal
+                # Dynamic prompt customization logic based on selected user goal
                 goal_instructions = ""
                 if "Keto" in diet_goal:
                     goal_instructions = (
@@ -147,11 +138,4 @@ if final_image is not None:
                     goal_instructions = "5. Keep your tone helpful, supportive, and direct."
 
                 # Combine the core instructions with the custom dynamic goal instructions
-                full_prompt = base_prompt + goal_instructions
-                
-                response = model.generate_content([full_prompt, img])
-                st.success("Analysis Complete!")
-                st.markdown(response.text)
-                
-            except Exception as e:
-                st.error(f"Something went wrong during analysis: {e}")
+                full_prompt = base_
