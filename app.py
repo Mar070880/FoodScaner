@@ -9,7 +9,7 @@ genai.configure(api_key="AQ.Ab8RN6IzREH7_Hvv6XemVIAq6tzM_h6AhPXy22982mJRxzjfVQ")
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
 
-# FIXED: Custom CSS Injection for Faded Background Image and Mobile App Shortcut Icon
+# FIXED: Custom CSS Injection to fix the aspect ratio AND add a mobile home screen icon link
 st.markdown(
     """
     <head>
@@ -17,16 +17,6 @@ st.markdown(
         <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/8124/8124017.png">
     </head>
     <style>
-    /* Injects a beautifully faded background image across the whole page */
-    .stApp {
-        background-image: linear-gradient(rgba(255,255,255,0.88), rgba(255,255,255,0.88)), 
-                          url("https://img.freepik.com/free-vector/healthy-food-background_23-2148524416.jpg");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
-    
-    /* Corrects camera aspect ratio bugs on mobile screens */
     div[data-testid="stMarkdownContainer"] video {
         object-fit: contain !important;
         height: auto !important;
