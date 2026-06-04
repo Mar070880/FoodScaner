@@ -9,6 +9,22 @@ genai.configure(api_key="AQ.Ab8RN6IzREH7_Hvv6XemVIAq6tzM_h6AhPXy22982mJRxzjfVQ")
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
 
+# FIXED: Custom CSS Injection to fix the squished video aspect ratio bug
+st.markdown(
+    """
+    <style>
+    div[data-testid="stMarkdownContainer"] video {
+        object-fit: contain !important;
+        height: auto !important;
+    }
+    iframe {
+        height: 350px !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("📸 AI Food Scale & Calorie Counter")
 st.write("Analyze your meal instantly using your live camera or an image upload.")
 st.write("---")
@@ -36,8 +52,8 @@ final_image = None
 if st.session_state.photo_source == "camera":
     st.subheader("Live Camera Capture")
     
-    # FIXED: Added a key="rear_cam_stream" property to stop the screen stretching and distortion
-    final_image = back_camera_input("Point at your food scale display and snap a picture", key="rear_cam_stream")
+    # Custom widget that auto-requests back-camera
+    final_image = back_camera_input("Point at your food scale display and snap a picture")
     
     if st.button("🔄 Clear / Reset Camera", use_container_width=True):
         st.session_state.photo_source = None
