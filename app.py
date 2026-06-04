@@ -36,8 +36,8 @@ final_image = None
 if st.session_state.photo_source == "camera":
     st.subheader("Live Camera Capture")
     
-    # FIXED: Uses the custom community widget which requests the back camera automatically
-    final_image = back_camera_input("Point at your food scale display and snap a picture")
+    # FIXED: Added a key="rear_cam_stream" property to stop the screen stretching and distortion
+    final_image = back_camera_input("Point at your food scale display and snap a picture", key="rear_cam_stream")
     
     if st.button("🔄 Clear / Reset Camera", use_container_width=True):
         st.session_state.photo_source = None
