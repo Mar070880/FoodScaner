@@ -1,6 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+# Import the custom rear-camera plug-in
+from streamlit_back_camera_input import back_camera_input
 
 # 1. Directly apply your API key here
 genai.configure(api_key="AQ.Ab8RN6IzREH7_Hvv6XemVIAq6tzM_h6AhPXy22982mJRxzjfVQ")
@@ -34,8 +36,8 @@ final_image = None
 if st.session_state.photo_source == "camera":
     st.subheader("Live Camera Capture")
     
-    # FIXED: Reverted to standard camera_input to completely fix the crash
-    final_image = st.camera_input("Line up your food scale display and snap a picture")
+    # FIXED: Uses the custom community widget which requests the back camera automatically
+    final_image = back_camera_input("Point at your food scale display and snap a picture")
     
     if st.button("🔄 Clear / Reset Camera", use_container_width=True):
         st.session_state.photo_source = None
