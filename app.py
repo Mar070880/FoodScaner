@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+import re
 # Import the custom rear-camera plug-in
 from streamlit_back_camera_input import back_camera_input
 
@@ -9,7 +10,7 @@ genai.configure(api_key="AQ.Ab8RN6IzREH7_Hvv6XemVIAq6tzM_h6AhPXy22982mJRxzjfVQ")
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
 
-# FIXED: Custom CSS Injection to fix the aspect ratio AND add a mobile home screen icon link
+# Custom CSS Injection to fix the aspect ratio AND add a mobile home screen icon link
 st.markdown(
     """
     <head>
@@ -33,7 +34,53 @@ st.title("📸 AI Food Scale & Calorie Counter")
 st.write("Analyze your meal instantly using your live camera or an image upload.")
 st.write("---")
 
-# Initialize session state tracking to handle clearing cleanly
+# Initialize Session State Variables for Calorie Tracking
+if "calories_consumed" not in st.session_state:
+    st.session_state.calories_consumed = 0
+
+# --- NEW: Daily Calorie Tracker Dashboard Widget ---
+st.subheader("📊 Your Daily Calorie Dashboard")
+
+# Let the user pick or type their exact target
+daily_target = st.number_input("Set your daily calorie target:", min_value=1000, max_value=10000, value=2000, step=50)
+
+# Calculate remaining math
+calories_left = max(0, daily_target - st.session_state.calories_consumed)
+progress_percentage = min(1.0, float(st.session_state.calories_consumed) / float(daily_target))
+
+# Display progress interface
+st.progress(progress_percentage)
+
+col_metric1, col_metric2, col_metric3 = st.columns(3)
+with col_metric1:
+    st.metric("Target", f"{daily_target} kcal")
+with col_metric2:
+    st.metric("Consumed", f"{st.session_state.calories_consumed} kcal")
+with col_metric3:
+    st.metric("Remaining", f"{calories_left} kcal")
+
+if st.button("🔄 Reset Daily Consumed Counter"):
+    st.session_state.calories_consumed = 0
+    st.rerun()
+
+st.write("---")
+
+# Dietary Goal Dropdown Selection Menu
+st.subheader("🎯 Set Your Current Nutritional Goal")
+diet_goal = st.selectbox(
+    "Choose a filter to customize the AI analysis:",
+    [
+        "Standard (General Calorie Counting)", 
+        "Keto / Low Carb (Track Net Carbs)", 
+        "Vegan / Plant-Based (Flag Animal Products)", 
+        "Calorie Deficit / Weight Loss (Highlight Low-Calorie Volumes)", 
+        "Muscle Building / High Protein (Highlight Protein Sources)"
+    ]
+)
+
+st.write("---")
+
+# Initialize session state tracking to handle camera clearing cleanly
 if "photo_source" not in st.session_state:
     st.session_state.photo_source = None
 
@@ -81,7 +128,8 @@ if final_image is not None:
                 img = Image.open(final_image)
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 
-                prompt = (
+                # Base prompt guidelines - CRITICAL: We now force Gemini to provide a clear, extractable number tag
+                base_prompt = (
                     "You are a nutritional expert and automated food scale assistant. "
                     "Analyze the provided image carefully. Your task is to:\n"
                     "1. Read the exact number display on the digital food scale if visible.\n"
@@ -89,12 +137,61 @@ if final_image is not None:
                     "3. Provide a clear Markdown table detailing the ingredients, estimated or read weights, "
                     "and a precise calorie breakdown.\n"
                     "4. Give a final total calorie calculation.\n"
-                    "Keep your tone helpful, supportive, and direct."
+                    "CRITICAL OUTPUT FORMAT rule: At the very end of your response, output the final total numeric calorie value "
+                    "exactly inside brackets like this: TOTAL_CALORIES:[XYZ] where XYZ is the total integer number alone. Do not omit this."
                 )
                 
-                response = model.generate_content([prompt, img])
+                # Dynamic instructions added conditionally based on user choice
+                goal_instructions = ""
+                if "Keto" in diet_goal:
+                    goal_instructions = (
+                        "5. DIETARY GOAL CRITICAL INSTRUCTION: The user is on a strict KETO diet. "
+                        "In your text response below the table, explicitly calculate the estimated Net Carbs "
+                        "(Total Carbs minus Fiber) and give a warning if any item is high in sugar or carbs."
+                    )
+                elif "Vegan" in diet_goal:
+                    goal_instructions = (
+                        "5. DIETARY GOAL CRITICAL INSTRUCTION: The user is VEGAN. "
+                        "Carefully audit all identified ingredients. If you spot dairy, meat, eggs, honey, "
+                        "or hidden animal fats, call them out immediately in a bold text bullet point."
+                    )
+                elif "Calorie Deficit" in diet_goal:
+                    goal_instructions = (
+                        "5. DIETARY GOAL CRITICAL INSTRUCTION: The user is in a CALORIE DEFICIT. "
+                        "Provide a helpful tip beneath the table on how they could swap any high-calorie ingredient "
+                        "visible for a lower-calorie alternative to increase meal volume."
+                    )
+                elif "Muscle Building" in diet_goal:
+                    goal_instructions = (
+                        "5. DIETARY GOAL CRITICAL INSTRUCTION: The user wants to BUILD MUSCLE. "
+                        "Highlight which ingredients provide the highest protein in this meal, and evaluate if "
+                        "the meal has enough total protein for a fitness athlete."
+                    )
+                else:
+                    goal_instructions = "5. Keep your tone helpful, supportive, and direct."
+
+                full_prompt = base_prompt + goal_instructions
+                
+                response = model.generate_content([full_prompt, img])
+                ai_text = response.text
+                
+                # Try to automatically extract the calorie number from Gemini's response to add to our state dashboard
+                try:
+                    match = re.search(r"TOTAL_CALORIES:\[(\d+)\]", ai_text)
+                    if match:
+                        extracted_calories = int(match.group(1))
+                        st.session_state.calories_consumed += extracted_calories
+                except:
+                    pass # Fallback cleanly if parsing text skips a beat
+                
                 st.success("Analysis Complete!")
-                st.markdown(response.text)
+                
+                # Clean up the hidden regex tag from displaying visually to the user
+                clean_display_text = ai_text.split("TOTAL_CALORIES:[")[0]
+                st.markdown(clean_display_text)
+                
+                # Nudge user to see their updated metrics at the top
+                st.info("⬆️ Your Daily Calorie Dashboard at the top has been updated automatically!")
                 
             except Exception as e:
                 st.error(f"Something went wrong during analysis: {e}")
