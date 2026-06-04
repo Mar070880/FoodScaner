@@ -34,8 +34,8 @@ final_image = None
 if st.session_state.photo_source == "camera":
     st.subheader("Live Camera Capture")
     
-    # facing_mode="environment" forces mobile phones to use the back camera
-    final_image = st.camera_input("Line up your food scale display and snap a picture", facing_mode="environment")
+    # FIXED: Reverted to standard camera_input to completely fix the crash
+    final_image = st.camera_input("Line up your food scale display and snap a picture")
     
     if st.button("🔄 Clear / Reset Camera", use_container_width=True):
         st.session_state.photo_source = None
