@@ -9,10 +9,24 @@ genai.configure(api_key="AQ.Ab8RN6IzREH7_Hvv6XemVIAq6tzM_h6AhPXy22982mJRxzjfVQ")
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
 
-# FIXED: Custom CSS Injection to fix the squished video aspect ratio bug
+# Custom CSS Injection for Faded Background Image and Mobile App Shortcut Icon
 st.markdown(
     """
+    <head>
+        <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/8124/8124017.png">
+        <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/8124/8124017.png">
+    </head>
     <style>
+    /* Injects a beautifully faded background image across the whole page */
+    .stApp {
+        background-image: linear-gradient(rgba(255,255,255,0.88), rgba(255,255,255,0.88)), 
+                          url("https://img.freepik.com/free-vector/healthy-food-background_23-2148524416.jpg");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    
+    /* Corrects camera aspect ratio bugs on mobile screens */
     div[data-testid="stMarkdownContainer"] video {
         object-fit: contain !important;
         height: auto !important;
@@ -27,6 +41,21 @@ st.markdown(
 
 st.title("📸 AI Food Scale & Calorie Counter")
 st.write("Analyze your meal instantly using your live camera or an image upload.")
+st.write("---")
+
+# ADDED: Dietary Goal Dropdown Selection Menu
+st.subheader("🎯 Set Your Current Nutritional Goal")
+diet_goal = st.selectbox(
+    "Choose a filter to customize the AI analysis:",
+    [
+        "Standard (General Calorie Counting)", 
+        "Keto / Low Carb (Track Net Carbs)", 
+        "Vegan / Plant-Based (Flag Animal Products)", 
+        "Calorie Deficit / Weight Loss (Highlight Low-Calorie Volumes)", 
+        "Muscle Building / High Protein (Highlight Protein Sources)"
+    ]
+)
+
 st.write("---")
 
 # Initialize session state tracking to handle clearing cleanly
@@ -77,7 +106,8 @@ if final_image is not None:
                 img = Image.open(final_image)
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 
-                prompt = (
+                # Base instructions for the AI agent
+                base_prompt = (
                     "You are a nutritional expert and automated food scale assistant. "
                     "Analyze the provided image carefully. Your task is to:\n"
                     "1. Read the exact number display on the digital food scale if visible.\n"
@@ -85,10 +115,41 @@ if final_image is not None:
                     "3. Provide a clear Markdown table detailing the ingredients, estimated or read weights, "
                     "and a precise calorie breakdown.\n"
                     "4. Give a final total calorie calculation.\n"
-                    "Keep your tone helpful, supportive, and direct."
                 )
                 
-                response = model.generate_content([prompt, img])
+                # ADDED: Dynamic prompt customization logic based on selected user goal
+                goal_instructions = ""
+                if "Keto" in diet_goal:
+                    goal_instructions = (
+                        "5. DIETARY GOAL CRITICAL INSTRUCTION: The user is on a strict KETO diet. "
+                        "In your text response below the table, explicitly calculate the estimated Net Carbs "
+                        "(Total Carbs minus Fiber) and give a warning if any item is high in sugar or carbs."
+                    )
+                elif "Vegan" in diet_goal:
+                    goal_instructions = (
+                        "5. DIETARY GOAL CRITICAL INSTRUCTION: The user is VEGAN. "
+                        "Carefully audit all identified ingredients. If you spot dairy, meat, eggs, honey, "
+                        "or hidden animal fats, call them out immediately in a bold red warning or text bullet point."
+                    )
+                elif "Calorie Deficit" in diet_goal:
+                    goal_instructions = (
+                        "5. DIETARY GOAL CRITICAL INSTRUCTION: The user is in a CALORIE DEFICIT. "
+                        "Provide a helpful tip beneath the table on how they could swap any high-calorie ingredient "
+                        "visible for a lower-calorie alternative to increase meal volume."
+                    )
+                elif "Muscle Building" in diet_goal:
+                    goal_instructions = (
+                        "5. DIETARY GOAL CRITICAL INSTRUCTION: The user wants to BUILD MUSCLE. "
+                        "Highlight which ingredients provide the highest protein in this meal, and evaluate if "
+                        "the meal has enough total protein for a fitness athlete."
+                    )
+                else:
+                    goal_instructions = "5. Keep your tone helpful, supportive, and direct."
+
+                # Combine the core instructions with the custom dynamic goal instructions
+                full_prompt = base_prompt + goal_instructions
+                
+                response = model.generate_content([full_prompt, img])
                 st.success("Analysis Complete!")
                 st.markdown(response.text)
                 
