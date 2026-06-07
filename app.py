@@ -3,10 +3,10 @@ import google.generativeai as genai
 from PIL import Image
 import re
 
-# Safely pulling the API key from your Streamlit App Secrets
-try:
+# Fetch the API key securely from Streamlit Dashboard Secrets
+if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except Exception as e:
+else:
     st.error("API Key Missing! Please add GEMINI_API_KEY to your Streamlit Advanced Settings Secrets.")
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
