@@ -2,20 +2,14 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import re
-import json
-from datetime import datetime
 
-# 1. Pulling the API key securely from your Streamlit Dashboard Secrets
+# Safely pulling the API key from your Streamlit App Secrets
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 except Exception as e:
     st.error("API Key Missing! Please add GEMINI_API_KEY to your Streamlit Advanced Settings Secrets.")
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
-
-# Initialize Phone Storage Connection
-from streamlit_local_storage import StLocalStorage
-local_storage = StLocalStorage()
 
 # ADVANCED CSS: Injects 3D Textured Green Buttons and a Soft Floral Background
 st.markdown(
@@ -77,30 +71,15 @@ st.title("📸 AI Food Scale & Calorie Counter")
 st.write("Analyze your meal instantly using your live camera or an image upload.")
 st.write("---")
 
-# Get today's date formatted as YYYY-MM-DD
-today_str = datetime.today().strftime('%Y-%m-%d')
-
-# --- PHONE MEMORY MANAGEMENT BLOCK ---
-saved_data = local_storage.get(key="meal_history_archive")
-if saved_data is not None and saved_data != "":
-    try:
-        history_archive = json.loads(saved_data)
-    except:
-        history_archive = {}
-else:
-    history_archive = {}
-
-if today_str not in history_archive:
-    history_archive[today_str] = {"target": 2000, "consumed": 0, "meals": []}
-
-if "current_consumed" not in st.session_state:
-    st.session_state.current_consumed = history_archive[today_str]["consumed"]
+# Initialize Native Session State Tracking Variables
+if "calories_consumed" not in st.session_state:
+    st.session_state.calories_consumed = 0
 
 if "photo_source" not in st.session_state:
     st.session_state.photo_source = None
 
 # =========================================================
-# STEP 1: 3D CAMERA & SCANNER OPTION AT THE VERY TOP
+# STEP 1: CAMERA & SCANNER CONTROLS AT THE ABSOLUTE TOP
 # =========================================================
 col1, col2 = st.columns(2)
 
@@ -188,33 +167,27 @@ if final_image is not None:
                     match = re.search(r"TOTAL_CALORIES:\[(\d+)\]", ai_text)
                     if match:
                         extracted_calories = int(match.group(1))
-                        st.session_state.current_consumed += extracted_calories
-                        history_archive[today_str]["consumed"] = st.session_state.current_consumed
-                        history_archive[today_str]["meals"].append({"time": datetime.now().strftime("%H:%M"), "calories": extracted_calories})
-                        local_storage.set(key="meal_history_archive", value=json.dumps(history_archive))
+                        st.session_state.calories_consumed += extracted_calories
                 except:
                     pass 
                 
                 st.success("Analysis Complete!")
                 clean_display_text = ai_text.split("TOTAL_CALORIES:[")[0]
                 st.markdown(clean_display_text)
-                st.info("💾 Meal saved automatically to your device's log archive!")
                 
             except Exception as e:
                 st.error(f"Something went wrong during analysis: {e}")
 
 # =========================================================
-# STEP 3: CALORIE TRACKER DASHBOARD & HISTORY AT THE BOTTOM
+# STEP 3: CALORIE TRACKER DASHBOARD SITUATED DOWN THE PAGE
 # =========================================================
 st.write("---")
 st.subheader("📊 Your Daily Calorie Dashboard")
 
-daily_target = st.number_input("Set your daily calorie target:", min_value=1000, max_value=10000, value=int(history_archive[today_str].get("target", 2000)), step=50)
-history_archive[today_str]["target"] = daily_target
+daily_target = st.number_input("Set your daily calorie target:", min_value=1000, max_value=10000, value=2000, step=50)
 
-calories_consumed = st.session_state.current_consumed
-calories_left = max(0, daily_target - calories_consumed)
-progress_percentage = min(1.0, float(calories_consumed) / float(daily_target))
+calories_left = max(0, daily_target - st.session_state.calories_consumed)
+progress_percentage = min(1.0, float(st.session_state.calories_consumed) / float(daily_target))
 
 st.progress(progress_percentage)
 
@@ -222,31 +195,10 @@ col_metric1, col_metric2, col_metric3 = st.columns(3)
 with col_metric1:
     st.metric("Target", f"{daily_target} kcal")
 with col_metric2:
-    st.metric("Consumed", f"{calories_consumed} kcal")
+    st.metric("Consumed", f"{st.session_state.calories_consumed} kcal")
 with col_metric3:
     st.metric("Remaining", f"{calories_left} kcal")
 
 if st.button("🔄 Reset Today's Consumed Counter", use_container_width=True):
-    st.session_state.current_consumed = 0
-    history_archive[today_str]["consumed"] = 0
-    history_archive[today_str]["meals"] = []
-    local_storage.set(key="meal_history_archive", value=json.dumps(history_archive))
+    st.session_state.calories_consumed = 0
     st.rerun()
-
-st.write("---")
-st.subheader("📅 Your Month History Archive")
-with st.expander("📋 View Past Saved Days (This Month)"):
-    if len(history_archive) <= 1 and history_archive.get(today_str, {}).get("consumed", 0) == 0:
-        st.write("No meals tracked yet. Your logs will appear here day by day!")
-    else:
-        for date_key in sorted(history_archive.keys(), reverse=True):
-            day_data = history_archive[date_key]
-            total_day_calories = day_data.get("consumed", 0)
-            target_day_calories = day_data.get("target", 2000)
-            
-            st.markdown(f"**📅 Date: {date_key}**")
-            st.write(f"👉 Total Eaten: **{total_day_calories}** / {target_day_calories} kcal")
-            
-            mini_percentage = min(1.0, float(total_day_calories) / float(target_day_calories))
-            st.progress(mini_percentage)
-            st.write("---")
