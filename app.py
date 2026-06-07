@@ -11,7 +11,7 @@ else:
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
 
-# ADVANCED CSS: Injects 3D Textured Green Buttons and a Soft Floral Background
+# ADVANCED CSS: FORCE 3D Buttons & Soft Floral Background Override
 st.markdown(
     """
     <head>
@@ -37,30 +37,47 @@ st.markdown(
         background-attachment: fixed;
     }
 
-    /* 3D Green Button Styling (Targeting the action keys at the top) */
-    div.stButton > button {
+    /* FORCED 3D BUTTON INJECTION (Overrides native theme) */
+    div[data-testid="stButton"] button, 
+    button[data-testid="baseButton-secondary"] {
         background: linear-gradient(135deg, #a2d149 0%, #7cb021 100%) !important;
-        color: white !important;
-        font-weight: bold !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
         font-size: 18px !important;
         border: 1px solid #6b991c !important;
-        border-radius: 14px !important;
-        padding: 12px 24px !important;
-        box-shadow: 0px 6px 0px #537812, 0px 10px 15px rgba(0, 0, 0, 0.2) !important;
-        text-shadow: 1px 2px 2px rgba(0, 0, 0, 0.3) !important;
-        transition: all 0.1s ease-in-out !important;
-        text-transform: none !important;
+        border-radius: 16px !important;
+        padding: 14px 28px !important;
+        
+        /* Rigid 3D Bottom Edge Shadow */
+        box-shadow: 0px 6px 0px #537812, 0px 10px 15px rgba(0, 0, 0, 0.25) !important;
+        text-shadow: 1px 2px 2px rgba(0, 0, 0, 0.4) !important;
+        
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: transform 0.05s ease, box-shadow 0.05s ease !important;
     }
 
-    /* Active pressing effect to make it feel 3D tactile */
-    div.stButton > button:active {
+    /* Force Hover effect to stay bright green */
+    div[data-testid="stButton"] button:hover,
+    button[data-testid="baseButton-secondary"]:hover {
+        background: linear-gradient(135deg, #b0e056 0%, #87be25 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid #6b991c !important;
+    }
+
+    /* Tactile Click Down Effect */
+    div[data-testid="stButton"] button:active,
+    button[data-testid="baseButton-secondary"]:active {
         box-shadow: 0px 2px 0px #537812, 0px 4px 6px rgba(0, 0, 0, 0.2) !important;
         transform: translateY(4px) !important;
+        color: #ffffff !important;
     }
     
     /* Clean text styling readability overrides over the background */
     h1, h2, h3, p, label {
         color: #2e3d1d !important;
+        font-weight: 600;
     }
     </style>
     """,
