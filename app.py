@@ -3,15 +3,15 @@ import google.generativeai as genai
 from PIL import Image
 import re
 
-# Fetch the API key securely from Streamlit Dashboard Secrets
-if "GEMINI_API_KEY" in st.secrets:
+# 1. Pulling the API key securely from your Streamlit Dashboard Secrets
+try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-else:
+except Exception as e:
     st.error("API Key Missing! Please add GEMINI_API_KEY to your Streamlit Advanced Settings Secrets.")
 
 st.set_page_config(page_title="AI Food Scale", page_icon="📸", layout="centered")
 
-# ADVANCED CSS: FORCE 3D Buttons & Soft Floral Background Override
+# Custom CSS Injection to fix mobile camera aspect ratios and link shortcut icons
 st.markdown(
     """
     <head>
@@ -19,65 +19,12 @@ st.markdown(
         <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/8124/8124017.png">
     </head>
     <style>
-    /* Fixed aspect ratio for mobile camera video elements */
     div[data-testid="stMarkdownContainer"] video {
         object-fit: contain !important;
         height: auto !important;
     }
     iframe {
         height: 350px !important;
-    }
-
-    /* Soft Textured Light Floral Background */
-    .stApp {
-        background-image: linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)), 
-                          url('https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=1200&auto=format&fit=crop');
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-    }
-
-    /* FORCED 3D BUTTON INJECTION (Overrides native theme) */
-    div[data-testid="stButton"] button, 
-    button[data-testid="baseButton-secondary"] {
-        background: linear-gradient(135deg, #a2d149 0%, #7cb021 100%) !important;
-        color: #ffffff !important;
-        font-weight: 800 !important;
-        font-size: 18px !important;
-        border: 1px solid #6b991c !important;
-        border-radius: 16px !important;
-        padding: 14px 28px !important;
-        
-        /* Rigid 3D Bottom Edge Shadow */
-        box-shadow: 0px 6px 0px #537812, 0px 10px 15px rgba(0, 0, 0, 0.25) !important;
-        text-shadow: 1px 2px 2px rgba(0, 0, 0, 0.4) !important;
-        
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        transition: transform 0.05s ease, box-shadow 0.05s ease !important;
-    }
-
-    /* Force Hover effect to stay bright green */
-    div[data-testid="stButton"] button:hover,
-    button[data-testid="baseButton-secondary"]:hover {
-        background: linear-gradient(135deg, #b0e056 0%, #87be25 100%) !important;
-        color: #ffffff !important;
-        border: 1px solid #6b991c !important;
-    }
-
-    /* Tactile Click Down Effect */
-    div[data-testid="stButton"] button:active,
-    button[data-testid="baseButton-secondary"]:active {
-        box-shadow: 0px 2px 0px #537812, 0px 4px 6px rgba(0, 0, 0, 0.2) !important;
-        transform: translateY(4px) !important;
-        color: #ffffff !important;
-    }
-    
-    /* Clean text styling readability overrides over the background */
-    h1, h2, h3, p, label {
-        color: #2e3d1d !important;
-        font-weight: 600;
     }
     </style>
     """,
@@ -88,7 +35,7 @@ st.title("📸 AI Food Scale & Calorie Counter")
 st.write("Analyze your meal instantly using your live camera or an image upload.")
 st.write("---")
 
-# Initialize Native Session State Tracking Variables
+# Initialize Session State Variables for Calorie Tracking
 if "calories_consumed" not in st.session_state:
     st.session_state.calories_consumed = 0
 
@@ -96,7 +43,7 @@ if "photo_source" not in st.session_state:
     st.session_state.photo_source = None
 
 # =========================================================
-# STEP 1: CAMERA & SCANNER CONTROLS AT THE ABSOLUTE TOP
+# STEP 1: CAMERA & SCANNER OPTION AT THE VERY TOP
 # =========================================================
 col1, col2 = st.columns(2)
 
@@ -110,6 +57,7 @@ with col2:
 
 final_image = None
 
+# Handle camera/upload components dynamically immediately below buttons
 if st.session_state.photo_source == "camera":
     st.subheader("Live Camera Capture")
     from streamlit_back_camera_input import back_camera_input
@@ -144,6 +92,7 @@ diet_goal = st.selectbox(
     ]
 )
 
+# AI Vision Processing engine activation
 if final_image is not None:
     st.write("---")
     if st.button("🔥 Calculate Total Calories 🧮", use_container_width=True):
@@ -166,13 +115,29 @@ if final_image is not None:
                 
                 goal_instructions = ""
                 if "Keto" in diet_goal:
-                    goal_instructions = "\n5. DIETARY GOAL CRITICAL INSTRUCTION: The user is on KETO. Explicitly calculate Net Carbs."
+                    goal_instructions = (
+                        "\n5. DIETARY GOAL CRITICAL INSTRUCTION: The user is on a strict KETO diet. "
+                        "In your text response below the table, explicitly calculate the estimated Net Carbs "
+                        "(Total Carbs minus Fiber) and give a warning if any item is high in sugar or carbs."
+                    )
                 elif "Vegan" in diet_goal:
-                    goal_instructions = "\n5. DIETARY GOAL CRITICAL INSTRUCTION: The user is VEGAN. Flag animal products."
+                    goal_instructions = (
+                        "\n5. DIETARY GOAL CRITICAL INSTRUCTION: The user is VEGAN. "
+                        "Carefully audit all identified ingredients. If you spot dairy, meat, eggs, honey, "
+                        "or hidden animal fats, call them out immediately in a bold text bullet point."
+                    )
                 elif "Calorie Deficit" in diet_goal:
-                    goal_instructions = "\n5. DIETARY GOAL CRITICAL INSTRUCTION: The user is in a DEFICIT. Suggest low-calorie volume swaps."
+                    goal_instructions = (
+                        "\n5. DIETARY GOAL CRITICAL INSTRUCTION: The user is in a CALORIE DEFICIT. "
+                        "Provide a helpful tip beneath the table on how they could swap any high-calorie ingredient "
+                        "visible for a lower-calorie alternative to increase meal volume."
+                    )
                 elif "Muscle Building" in diet_goal:
-                    goal_instructions = "\n5. DIETARY GOAL CRITICAL INSTRUCTION: The user wants to BUILD MUSCLE. Highlight proteins."
+                    goal_instructions = (
+                        "\n5. DIETARY GOAL CRITICAL INSTRUCTION: The user wants to BUILD MUSCLE. "
+                        "Highlight which ingredients provide the highest protein in this meal, and evaluate if "
+                        "the meal has enough total protein for a fitness athlete."
+                    )
                 else:
                     goal_instructions = "\n5. Keep your tone helpful, supportive, and direct."
 
@@ -196,16 +161,19 @@ if final_image is not None:
                 st.error(f"Something went wrong during analysis: {e}")
 
 # =========================================================
-# STEP 3: CALORIE TRACKER DASHBOARD SITUATED DOWN THE PAGE
+# STEP 3: CALORIE TRACKER DASHBOARD AT THE BOTTOM
 # =========================================================
 st.write("---")
 st.subheader("📊 Your Daily Calorie Dashboard")
 
+# Let the user pick or type their exact target
 daily_target = st.number_input("Set your daily calorie target:", min_value=1000, max_value=10000, value=2000, step=50)
 
+# Calculate remaining math parameters
 calories_left = max(0, daily_target - st.session_state.calories_consumed)
 progress_percentage = min(1.0, float(st.session_state.calories_consumed) / float(daily_target))
 
+# Display progress interface
 st.progress(progress_percentage)
 
 col_metric1, col_metric2, col_metric3 = st.columns(3)
@@ -216,6 +184,6 @@ with col_metric2:
 with col_metric3:
     st.metric("Remaining", f"{calories_left} kcal")
 
-if st.button("🔄 Reset Today's Consumed Counter", use_container_width=True):
+if st.button("🔄 Reset Daily Consumed Counter", use_container_width=True):
     st.session_state.calories_consumed = 0
     st.rerun()
